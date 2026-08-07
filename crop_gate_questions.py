@@ -71,34 +71,43 @@ def find_question_candidates(parsed_pages):
             if q_words and sum(bool(re.fullmatch(r'Q\.?\d{1,2}\.?', x)) for x in words) == 1:
                 # Exclude section headers like "Q1 – Q5"
                 if not re.search(r'Q\d+\s*–\s*Q\d+', text):
-                    candidates.append({
-                        'page_no': page_no,
-                        'yMin': l['yMin'],
-                        'xMin': l['xMin'],
-                        'text': text
-                    })
+                    m = re.fullmatch(r'Q\.?(\d{1,2})\.?', words[0])
+                    if m:
+                        candidates.append({
+                            'page_no': page_no,
+                            'yMin': l['yMin'],
+                            'xMin': l['xMin'],
+                            'text': text,
+                            'q_num': int(m.group(1))
+                        })
+    # Sort by question number, then by page — so we map candidate index to question number
+    candidates.sort(key=lambda c: (c['q_num'], c['page_no']))
     return candidates
 
 def find_answer_boundary(page_lines, y_start, y_limit):
     """
     Find where Ans., Solution, Sol., or footer text begins between y_start and y_limit.
     Stopping before this prevents cropping solution text and printed answers.
+    Only stop on full sentence boundaries, NOT partial words like 'Ans.' inside a question.
     """
     ans_patterns = [
-        r'^\s*Ans\.?\s*\d*\s*[:.\-(]',
-        r'^\s*Ans\.?\s*\(?[A-D0-9]',
+        r'^\s*Ans(?:wer)?\.?\s*[:.\-]',
         r'^\s*Solution\s*[:.\-]',
-        r'^\s*Sol\.?\s*[:.\-]',
+        r'^\s*Sol(?:ution)?\.?\s*[:.\-]',
         r'^\s*Explanation\s*[:.\-]',
         r'Physics\s+by\s+fiziks',
         r'Learn\s+Physics',
         r'H\.O\.:\s*40-D',
-        r'Branch\s+office'
+        r'Branch\s+office',
+        r'^\s*\*+\s*$',
+        r'^\s*---+?\s*$',
     ]
-    
+
     for l in page_lines:
         y = l['yMin']
-        if y > y_start + 12 and y < y_limit:
+        # Avoid truncating the question itself by requiring at least 30px of
+        # breathing room from the start of the question.
+        if y > y_start + 30 and y < y_limit:
             for pat in ans_patterns:
                 if re.search(pat, l['text'], re.I):
                     return y
@@ -114,7 +123,8 @@ def render_pages(key, pdf):
 
 def main():
     if not DATA.exists():
-        subprocess.run(['python3', str(ROOT / 'extract_gate_papers.py')], check=True)
+        res = subprocess.run(['python3', str(ROOT / 'extract_gate_papers.py')], check=True, stdout=subprocess.PIPE)
+        DATA.write_bytes(res.stdout)
     
     banks = json.loads(DATA.read_text(encoding='utf-8'))
     OUT_SOURCE.mkdir(exist_ok=True)
@@ -128,51 +138,63 @@ def main():
         xml = RENDER / f'{key}.xml'
         if not xml.exists():
             subprocess.run(['pdftotext', '-bbox-layout', str(pdf), str(xml)], check=True)
-        
+
         parsed_pages = parse_xml_page_lines(xml)
         candidates = find_question_candidates(parsed_pages)
         pages_images = render_pages(key, pdf)
-        
+
         page_dict = {p['page_no']: p for p in parsed_pages}
         questions = banks.get(key, {}).get('questions', [])
         print(f'{key}: {len(questions)} questions, {len(candidates)} candidate positions')
-        
-        for index, question in enumerate(questions):
-            if index >= len(candidates):
+
+        # Group candidates by q_num so we can find a candidate for each bank question
+        # regardless of index alignment. Banks normalise question numbers (e.g. 11–65
+        # for subject Q1), but the PDF candidate numbers are the raw labels.
+        # For papers where the bank keeps `raw_n` (gate2018/2019/2021), use that;
+        # otherwise the bank n is the raw PDF label (gate2017).
+        for question in questions:
+            qn = question.get('raw_n') or question.get('n')
+            cand = next((c for c in candidates if c['q_num'] == qn), None)
+            if not cand:
                 continue
-            cand = candidates[index]
             page_no = cand['page_no']
             y_start = cand['yMin']
-            
+
             p_data = page_dict.get(page_no)
             if not p_data:
                 continue
-            
-            next_y = None
-            if index + 1 < len(candidates) and candidates[index + 1]['page_no'] == page_no:
-                next_y = candidates[index + 1]['yMin']
-            
+
+            # Find the next question on the same page (regardless of q_num) — that's
+            # where the answer / options end and the next question begins.
+            same_page = [c for c in candidates if c['page_no'] == page_no and c['yMin'] > y_start + 8]
+            next_y = min((c['yMin'] for c in same_page), default=None)
+
             y_limit = next_y if next_y is not None else (p_data['page_bottom'] + 10)
-            
+
             # Check for solution/answer boundary to cut BEFORE answer text
             ans_y = find_answer_boundary(p_data['lines'], y_start, y_limit)
-            if ans_y is not None:
+            if ans_y is not None and ans_y > y_start + 30:
                 bottom_pdf = ans_y - 4
             else:
                 bottom_pdf = next_y - 6 if next_y is not None else p_data['page_bottom'] + 10
-            
+
             image_path = pages_images.get(page_no)
             if not image_path:
                 continue
-            
+
             with Image.open(image_path) as image:
                 scale = image.width / 612.0
                 top = max(0, int((y_start - 8) * scale))
                 bottom = min(image.height, int(bottom_pdf * scale))
-                
-                # Ensure minimum height for safety so content is not cut off
-                if bottom <= top + int(60 * scale):
-                    bottom = min(image.height, top + int(200 * scale))
+
+                # If we never found the next question on this page (next_y is None),
+                # the only safeguard is the page bottom — and the question might
+                # overflow the natural limit. Add a small safety buffer but never
+                # exceed the image bounds.
+                if next_y is None:
+                    MIN_PX = int(360 * scale)
+                    if bottom - top < MIN_PX:
+                        bottom = min(image.height, top + MIN_PX)
                 
                 crop = image.crop((0, top, image.width, bottom)).convert('RGB')
                 crop.thumbnail((1200, 1600), Image.Resampling.LANCZOS)

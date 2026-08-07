@@ -94,7 +94,7 @@ def parse_questions(text, year):
     unique=[]; used=set()
     for q in records:
         if q['n'] in used: continue
-        used.add(q['n']); q.pop('raw_n', None); unique.append(q)
+        used.add(q['n']); unique.append(q)
     return unique
 
 def main():

@@ -175,6 +175,10 @@ function doPost(e) {
         sheet.getRange(user.row, 5).setValue(new Date().toISOString());
         return json_({ ok: true });
       }
+      if (body.action === 'load') {
+        if (!user || user.values[3] !== String(body.token || '')) return json_({ ok: false, error: 'Session expired. Log in again.' });
+        return json_({ ok: true, backup: user.values[2] || '', updatedAt: user.values[4] || '' });
+      }
       return json_({ ok: false, error: 'Unknown action.' });
     } finally { lock.releaseLock(); }
   } catch (error) { return json_({ ok: false, error: String(error.message || error) }); }

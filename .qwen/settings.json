@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(==n)",
+      "Bash(eof)",
+      "Bash(sys.path.insert)",
+      "Bash(from *)",
+      "Bash(parsed *)",
+      "Bash(xml)",
+      "Bash(candidates *)",
+      "Bash(parsed)",
+      "Bash(root *)",
+      "Bash('/home/esv/downloads/meow2')",
+      "Bash(data *)",
+      "Bash('/tmp/gate-papers-extracted.json')",
+      "Bash(parsed_pages *)",
+      "Bash(lines *)",
+      "Bash(y_min *)",
+      "Bash(lines.append)",
+      "Bash(parsed_pages.append)",
+      "Bash(cands *)",
+      "Bash(cands.append)",
+      "Bash(cands.sort)",
+      "Bash(q3 *)",
+      "Bash(cand *)",
+      "Bash(c *)",
+      "Bash(page *)",
+      "Bash(same_page *)",
+      "Bash(next_y *)"
+    ]
+  },
+  "$version": 4
+}
