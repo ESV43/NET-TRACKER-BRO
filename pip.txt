@@ -1,0 +1,41 @@
+autocommand==2.2.2
+backports.tarfile==1.2.0
+beautifulsoup4==4.14.3
+biopython==1.86
+cffi @ file:///home/conda/feedstock_root/build_artifacts/cffi_1725560564262/work
+cheroot==11.1.2
+CherryPy==18.10.0
+cherrypy-cors==1.7.0
+cmonkey2==1.2.16
+configparser==7.2.0
+greenlet==3.3.0
+httpagentparser==1.9.5
+jaraco.collections==5.2.1
+jaraco.context==6.1.0
+jaraco.functools==4.4.0
+jaraco.text==4.0.0
+Jinja2 @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_jinja2_1764517220/work
+lxml==6.0.2
+MarkupSafe @ file:///home/conda/feedstock_root/build_artifacts/markupsafe_1759055168201/work
+more-itertools==10.8.0
+numpy==2.4.1
+pandas==2.3.3
+portend==3.2.1
+pycparser @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pycparser_1733195786/work
+python-dateutil==2.9.0.post0
+pytz @ file:///home/conda/feedstock_root/build_artifacts/pytz_1742920838005/work
+repoze.lru==0.7
+Routes==2.5.1
+rpy2 @ file:///home/conda/feedstock_root/build_artifacts/rpy2_1696426038627/work
+scipy==1.17.0
+simplegeneric @ file:///home/conda/feedstock_root/build_artifacts/simplegeneric_1734685420077/work
+six==1.17.0
+soupsieve==2.8.1
+SQLAlchemy==2.0.45
+SQLAlchemy-Utils==0.42.1
+svgwrite==1.4.3
+tempora==5.8.1
+typing_extensions==4.15.0
+tzdata==2025.3
+tzlocal @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_tzlocal_1756227235/work
+zc.lockfile==4.0
