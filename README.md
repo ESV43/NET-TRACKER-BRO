@@ -1,7 +1,6 @@
+# ⚛️ CSIR NET Physical Sciences Tracker & Resource Hub
 
-# 🌐 NET-TRACKER-BRO
-
-> A lightweight, efficient, and user-friendly network tracking and diagnostic tool.
+> A dedicated repository providing Previous Year Questions (PYQs), curated study materials, formula sheets, and learning resources for **CSIR NET Physics (Physical Sciences)** aspirants.
 
 [![GitHub License](https://img.shields.io/github/license/ESV43/NET-TRACKER-BRO?style=flat-square)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/ESV43/NET-TRACKER-BRO?style=flat-square)](https://github.com/ESV43/NET-TRACKER-BRO/stargazers)
@@ -12,74 +11,34 @@
 
 ## 📌 Overview
 
-**NET-TRACKER-BRO** is an all-in-one network analysis and IP tracking tool designed to help developers, system administrators, and security enthusiasts track IP locations, analyze network traffic, run port scans, and monitor connection status.
+**NET-TRACKER-BRO** is a curated, open-access study repository designed specifically for candidates preparing for the **CSIR NET / JRF Examination in Physical Sciences**. 
+
+This repository consolidates topic-wise Previous Year Questions (PYQs), comprehensive study notes, formula sheets, standard reference book recommendations, and problem-solving materials to help aspirants streamline their preparation.
 
 ---
 
-## ✨ Features
+## 📚 What's Inside
 
-- 🔍 **IP & Domain Lookup**: Retrieve detailed network info (ISP, Location, ASN, Coordinates).
-- ⚡ **Ping & Latency Tracker**: Monitor live uptime, latency, and connection stability.
-- 🎯 **Port Scanner**: Multi-threaded scanning utility to detect active ports and services.
-- 🗺️ **Traceroute Analysis**: Trace hop paths across network nodes.
-- 📝 **Report Exporting**: Export scan results and diagnostic reports into JSON/CSV/TXT files.
-- 💻 **Clean Interface**: Easy-to-navigate command-line / terminal interface with organized output.
+### 1. 📝 Previous Year Questions (PYQs)
+- Year-wise & Topic-wise solved CSIR NET Physical Sciences papers.
+- Categorized questions for **Part A** (General Aptitude), **Part B** (Core Physics), and **Part C** (Advanced Physics).
 
----
+### 2. 📖 Core Subject Study Materials
+Classified according to the official CSIR NET Physical Sciences syllabus:
+- **Mathematical Methods of Physics**
+- **Classical Mechanics**
+- **Electromagnetic Theory (EMT)**
+- **Quantum Mechanics**
+- **Thermodynamics & Statistical Physics**
+- **Electronics & Experimental Methods**
+- **Atomic & Molecular Physics**
+- **Condensed Matter Physics (Solid State Physics)**
+- **Nuclear & Particle Physics**
 
-## 🛠️ Requirements & Installation
-
-### Prerequisites
-Make sure you have the following installed on your machine:
-- **Python 3.8+** (or your runtime of choice)
-- **Git**
-
-### Installation Steps
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/ESV43/NET-TRACKER-BRO.git
-   cd NET-TRACKER-BRO
-   ```
-
-2. **(Optional) Create a virtual environment:**
-   ```bash
-   # On Linux/macOS
-   python3 -m venv venv
-   source venv/bin/activate
-
-   # On Windows
-   python -m venv venv
-   venv\Scripts\activate
-   ```
-
-3. **Install required dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
----
-
-## 💡 Usage
-
-Run the main application script:
-
-```bash
-python main.py
-```
-
-### Example Commands
-
-```bash
-# Trace an IP or Domain
-python main.py --ip 8.8.8.8
-
-# Perform a quick port scan
-python main.py --scan example.com
-
-# Export results
-python main.py --ip 8.8.8.8 --output report.json
-```
+### 3. 🚀 Additional Resources
+- Quick revision formula sheets & short notes.
+- Recommended reference books & solutions guide.
+- Topic-wise practice problem sets and revision checklists.
 
 ---
 
@@ -87,52 +46,53 @@ python main.py --ip 8.8.8.8 --output report.json
 
 ```text
 NET-TRACKER-BRO/
-├── src/                  # Core application source files
-│   ├── modules/          # Tracking and scanning logic
-│   └── utils/            # Helper functions and output formatters
-├── tests/                # Unit and integration tests
-├── .gitignore            # Git ignore config
-├── LICENSE               # License file
-├── README.md             # Project documentation
-├── main.py               # Main application entry point
-└── requirements.txt      # Dependency list
+├── PYQs/                         # Year-wise and topic-wise previous year papers
+│   ├── Part-A/                   # General Aptitude papers
+│   ├── Part-B-Core/              # Core physics question papers & solutions
+│   └── Part-C-Advanced/          # Advanced physics question papers & solutions
+├── Study-Materials/              # Topic-wise revision notes & formula sheets
+│   ├── 01-Mathematical-Physics/
+│   ├── 02-Classical-Mechanics/
+│   ├── 03-Electromagnetic-Theory/
+│   ├── 04-Quantum-Mechanics/
+│   ├── 05-Thermodynamics-Statistical/
+│   ├── 06-Electronics/
+│   ├── 07-Atomic-Molecular/
+│   ├── 08-Condensed-Matter/
+│   └── 09-Nuclear-Particle/
+├── Additional-Resources/         # Standard book list, formula sheets & extra problem sets
+├── LICENSE                       # Open-source license
+└── README.md                     # Repository documentation
 ```
-
----
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome!
-
-1. **Fork** the repository.
-2. Create a feature branch: `git checkout -b feature/AmazingFeature`
-3. Commit your changes: `git commit -m 'Add some AmazingFeature'`
-4. Push to the branch: `git push origin feature/AmazingFeature`
-5. Open a **Pull Request**.
 
 ---
 
 ## ⚖️ Copyright & Content Disclaimer
 
-All copyrighted materials, trademarks, logos, assets, and third-party contents referenced or used within this repository belong to their **respective owners**. 
-
-This project does not claim ownership over any third-party intellectual property. If you are the copyright holder of any content included in this repository and wish for it to be removed or modified, please open a GitHub Issue or contact the author ([ESV43](https://github.com/ESV43)), and it will be promptly removed upon request.
+- All official examination materials, syllabus guidelines, logos, and acronyms (**CSIR**, **NTA**, **CSIR NET**) are the exclusive property of their respective governing bodies (**Council of Scientific and Industrial Research** / **National Testing Agency**).
+- All textbooks, research notes, published papers, and third-party study materials included or referenced in this repository are owned by their respective authors, educators, and publishers.
+- This repository is maintained solely for **educational, non-commercial, and self-study purposes**. 
+- **Copyright Removal Notice:** If you are a copyright owner (author, educator, publisher, or institution) and believe that any content in this repository infringes upon your copyright, please open a GitHub Issue or contact the author ([ESV43](https://github.com/ESV43)). The specified content will be **removed immediately upon request**.
 
 ---
 
-## ⚠️ Legal & Ethical Disclaimer
+## 🤝 Contributing
 
-This tool is created strictly for **educational and legitimate administrative purposes**. Unauthorized scanning or tracking of targets without explicit permission is illegal. The author (**ESV43**) assumes no responsibility for any misuse or legal consequences arising from the use of this software.
+If you have quality notes, solved PYQs, or helpful physics resources to share with fellow CSIR NET aspirants:
+
+1. **Fork** the repository.
+2. Add your materials to the appropriate subject directory.
+3. Commit your changes: `git commit -m 'Added Quantum Mechanics Revision Notes'`.
+4. Push to your branch and open a **Pull Request**.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+This repository is shared under the **MIT License**. See the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 👨‍💻 Author
+## 👨‍💻 Maintainer
 
-Created with ❤️ by [ESV43](https://github.com/ESV43).
-```
+Created & maintained by [ESV43](https://github.com/ESV43). Best of luck with your CSIR NET Physical Sciences preparation! 🎯
