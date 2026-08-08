@@ -1,10 +1,4 @@
-Here is the updated **`README.md`** file with the **Copyright & Content Notice** added.
 
----
-
-### 📄 `README.md`
-
-```markdown
 # 🌐 NET-TRACKER-BRO
 
 > A lightweight, efficient, and user-friendly network tracking and diagnostic tool.
