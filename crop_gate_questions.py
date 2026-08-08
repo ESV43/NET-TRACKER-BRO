@@ -152,9 +152,21 @@ def main():
         # for subject Q1), but the PDF candidate numbers are the raw labels.
         # For papers where the bank keeps `raw_n` (gate2018/2019/2021), use that;
         # otherwise the bank n is the raw PDF label (gate2017).
+        # Years with a GA section where GA Q1–Q10 and subject Q1–Q55 share labels.
+        ga_years = {'gate2018', 'gate2019', 'gate2021'}
         for question in questions:
             qn = question.get('raw_n') or question.get('n')
-            cand = next((c for c in candidates if c['q_num'] == qn), None)
+            matches = [c for c in candidates if c['q_num'] == qn]
+            if not matches:
+                continue
+            if key in ga_years and len(matches) > 1:
+                # GA section appears first in the PDF (Q1–Q10), subject section
+                # appears second (Q1–Q55). Bank question n<=10 is GA (use 1st
+                # match); n>=11 is subject (use 2nd match).
+                bank_n = question.get('n')
+                cand = matches[0] if bank_n <= 10 else matches[1]
+            else:
+                cand = matches[0]
             if not cand:
                 continue
             page_no = cand['page_no']
