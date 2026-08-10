@@ -31,9 +31,14 @@ def parse_xml_page_lines(xml_path):
     
     for page_no, page in enumerate(pages, 1):
         lines_info = []
+        page_width = float(page.attrib.get('width', 612))
+        page_height = float(page.attrib.get('height', 792))
         all_words = [e for e in page.iter() if tag(e, 'word')]
-        usable = [float(w.attrib['yMax']) for w in all_words if float(w.attrib['yMax']) < 745]
-        page_bottom = max(usable, default=720)
+        # Limit "usable" words to the actual printable area: skip the page footer
+        # which sits below ~page_height - 50 for typical GATE solution PDFs.
+        footer_cutoff = page_height - 40
+        usable = [float(w.attrib['yMax']) for w in all_words if float(w.attrib['yMax']) < footer_cutoff]
+        page_bottom = max(usable, default=page_height - 80)
         
         for line in [e for e in page.iter() if tag(e, 'line')]:
             words = [e for e in line if tag(e, 'word')]
@@ -53,6 +58,8 @@ def parse_xml_page_lines(xml_path):
             })
         parsed_pages.append({
             'page_no': page_no,
+            'width': page_width,
+            'height': page_height,
             'lines': lines_info,
             'page_bottom': page_bottom
         })
@@ -195,15 +202,23 @@ def main():
                 continue
 
             with Image.open(image_path) as image:
-                scale = image.width / 612.0
+                # Use the actual PDF page width for scale, not a hardcoded 612.
+                # Different papers use different page sizes (Letter=612 vs A4≈595.38)
+                # and assuming Letter caused crops to be offset, leaking content from
+                # the previous question (its answer/solution text) into the next crop.
+                pdf_page_width = p_data.get('width', image.width / 150 * 72)
+                scale = image.width / pdf_page_width
                 top = max(0, int((y_start - 8) * scale))
                 bottom = min(image.height, int(bottom_pdf * scale))
 
-                # If we never found the next question on this page (next_y is None),
-                # the only safeguard is the page bottom — and the question might
-                # overflow the natural limit. Add a small safety buffer but never
-                # exceed the image bounds.
-                if next_y is None:
+                # If we never found the next question on this page (next_y is None)
+                # AND we never found an answer/solution boundary either, fall back to
+                # the page bottom. The question might overflow the natural limit;
+                # add a small safety buffer but never exceed the image bounds.
+                # When the answer boundary IS detected, trust it — don't extend the
+                # crop to a fixed minimum height, otherwise we'll pull in the
+                # solution text that comes after the answer.
+                if next_y is None and ans_y is None:
                     MIN_PX = int(360 * scale)
                     if bottom - top < MIN_PX:
                         bottom = min(image.height, top + MIN_PX)
