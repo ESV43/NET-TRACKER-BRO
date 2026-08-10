@@ -36,7 +36,9 @@ function authorizeTracker() {
 }
 
 function email_(username, token) {
-  const serviceUrl = ScriptApp.getService().getUrl();
+  // Set WEB_APP_URL to the deployed /exec URL when available. This avoids
+  // verification links pointing at an editor/development deployment.
+  const serviceUrl = PropertiesService.getScriptProperties().getProperty('WEB_APP_URL') || 'https://script.google.com/macros/s/AKfycbyDDh2WkLmHd7ERcSL3X1EEr3a4hDYxys408W8ES4P0Lh-Ao44KIbC5_xKa3hBJW1hwZg/exec';
   const link = serviceUrl ? (serviceUrl + '?action=verify&token=' + encodeURIComponent(token)) : '';
   const senderName = 'Physics NET Tracker';
   const subject = 'Physics NET Tracker — verify your account';
@@ -125,7 +127,10 @@ function doGet(e) {
     const values = sheet.getDataRange().getValues();
     for (let i = 1; i < values.length; i++) {
       if (String(values[i][6] || '') === token) {
-        sheet.getRange(i + 1, 6, 1, 2).setValues([[true, '']]);
+        // Keep the token after verification. Gmail and security scanners often
+        // pre-open links; clearing it on that first automated request made the
+        // user's later click appear invalid.
+        sheet.getRange(i + 1, 6).setValue(true);
         return HtmlService.createHtmlOutput('<h2>Account verified</h2><p>You can return to the tracker and log in now.</p>');
       }
     }
@@ -168,6 +173,15 @@ function doPost(e) {
         const token = token_();
         sheet.getRange(user.row, 4, 1, 2).setValues([[token, new Date().toISOString()]]);
         return json_({ ok: true, token: token, backup: user.values[2] || '' });
+      }
+      if (body.action === 'resend') {
+        if (!user) return json_({ ok: false, error: 'No account was found for this email. Try creating an account first.' });
+        if (user.values[1] !== hash_(password)) return json_({ ok: false, error: 'Incorrect password.' });
+        if (String(user.values[5]).toLowerCase() === 'true') return json_({ ok: true, message: 'This account is already verified.' });
+        const token = token_();
+        sheet.getRange(user.row, 7).setValue(token);
+        email_(username, token);
+        return json_({ ok: true, message: 'Verification email resent.' });
       }
       if (body.action === 'save') {
         if (!user || user.values[3] !== String(body.token || '')) return json_({ ok: false, error: 'Session expired. Log in again.' });
