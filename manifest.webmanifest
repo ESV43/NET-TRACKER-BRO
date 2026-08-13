@@ -1,0 +1,9 @@
+{
+  "name": "CSIR-NET Physics Preparation Dashboard",
+  "short_name": "CSIR Physics",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0b0c0e",
+  "icons": []
+}
