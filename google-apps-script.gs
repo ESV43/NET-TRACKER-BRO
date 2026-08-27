@@ -1,7 +1,7 @@
 // Google Apps Script web app for the tracker cloud backup.
 // Sheet columns: username | password | backupData | sessionToken | updatedAt | verified | verificationToken
 const SHEET_NAME = 'Users';
-const HEADERS = ['username', 'password', 'backupData', 'sessionToken', 'updatedAt', 'verified', 'verificationToken'];
+const HEADERS = ['username', 'password', 'backupData', 'sessionToken', 'updatedAt', 'verified', 'verificationToken', 'resetToken', 'resetExpires', 'freeAiUsed'];
 
 function sheet_() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME) ||
@@ -153,6 +153,38 @@ function doPost(e) {
     lock.waitLock(10000);
     try {
       const user = findUser_(sheet, username);
+      if (body.action === 'forgot') {
+        // Do not reveal whether an email is registered.
+        if (user) {
+          const token = token_();
+          sheet.getRange(user.row, 8, 1, 2).setValues([[token, Date.now() + 15 * 60 * 1000]]);
+          MailApp.sendEmail(username, 'Physics NET Tracker — password reset', 'Use this one-time reset token within 15 minutes:\n\n' + token + '\n\nIf you did not request this, ignore this email.');
+        }
+        return json_({ ok: true, message: 'If the account exists, a reset email has been sent.' });
+      }
+      if (body.action === 'reset') {
+        if (!user || String(user.values[7] || '') !== String(body.token || '') || Number(user.values[8] || 0) < Date.now()) return json_({ ok: false, error: 'Reset token is invalid or expired.' });
+        if (password.length < 6) return json_({ ok: false, error: 'A password of at least 6 characters is required.' });
+        sheet.getRange(user.row, 2).setValue(hash_(password));
+        sheet.getRange(user.row, 8, 1, 2).clearContent();
+        return json_({ ok: true });
+      }
+      if (body.action === 'ai') {
+        if (!user || user.values[3] !== String(body.token || '')) return json_({ ok: false, error: 'Log in before using the included AI allowance.' });
+        const used=Number(user.values[9]||0), limit=3;
+        if (used>=limit) return json_({ok:false,error:'Included AI allowance used. Add your own Gemini or NVIDIA NIM key in Settings.'});
+        const apiKey=PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+        if(!apiKey) return json_({ok:false,error:'The included AI service is not configured yet.'});
+        const model=String(body.model||'gemini-3.6-flash');
+        const endpoint='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(apiKey);
+        const contents=(body.history||[]).map(function(m){return {role:m.role==='assistant'?'model':'user',parts:[{text:String(m.text||'')}]};});
+        contents.push({role:'user',parts:[{text:'You are a careful CSIR-NET Physics tutor. Use valid LaTeX.\nContext:\n'+String(body.context||'')+'\n\nStudent request:\n'+String(body.prompt||'')}]});
+        const response=UrlFetchApp.fetch(endpoint,{method:'post',contentType:'application/json',payload:JSON.stringify({contents:contents,generationConfig:{temperature:0.2,maxOutputTokens:Number(body.maxOutputTokens||4096)} }),muteHttpExceptions:true});
+        const result=JSON.parse(response.getContentText()||'{}');
+        if(response.getResponseCode()>=300) return json_({ok:false,error:result.error&&result.error.message||'Included AI request failed.'});
+        sheet.getRange(user.row,10).setValue(used+1);
+        return json_({ok:true,text:(((result.candidates||[])[0]||{}).content||{}).parts?.map(function(p){return p.text||'';}).join('')||'No response returned.',used:used+1,remaining:limit-used-1});
+      }
       if (body.action === 'register') {
         if (user) return json_({ ok: false, error: 'That username is already in use. Please choose another username.' });
         const token = token_();
