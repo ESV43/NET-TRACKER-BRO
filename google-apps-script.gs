@@ -1,13 +1,55 @@
 // Google Apps Script web app for the tracker cloud backup.
-// Sheet columns: username | password | backupData | sessionToken | updatedAt | verified | verificationToken
+// Sheet columns: username | password | backupData | sessionToken | updatedAt | verified | verificationToken | resetToken | resetExpires | freeAiUsed | freeAiDate | premium
+// premium: 0 = free, 1 = premium. Grant via the in-app Admin panel (requires your
+// email in the ADMIN_EMAILS script property) or by editing the Sheet directly.
+// Free: 2 GATE + 2 CSIR papers, 3 AI solver requests/day. Premium: all papers, 15 AI/day.
+// Setup: in Apps Script open Project Settings > Script Properties and add
+//   ADMIN_EMAILS = owner@example.com[,second-admin@example.com]
+// then redeploy the web app (Deploy > Manage deployments > New version).
 const SHEET_NAME = 'Users';
-const HEADERS = ['username', 'password', 'backupData', 'sessionToken', 'updatedAt', 'verified', 'verificationToken', 'resetToken', 'resetExpires', 'freeAiUsed', 'freeAiDate'];
+const HEADERS = ['username', 'password', 'backupData', 'sessionToken', 'updatedAt', 'verified', 'verificationToken', 'resetToken', 'resetExpires', 'freeAiUsed', 'freeAiDate', 'premium'];
+const FREE_AI_LIMIT = 3;
+const PREMIUM_AI_LIMIT = 15;
+
+function isPremiumValue_(value) {
+  // Accept 1, "1", true, "true" as premium. Everything else (0, "", undefined) is free.
+  // This keeps old rows (created before the premium column existed) working as free.
+  if (value === true || value === 1) return true;
+  const s = String(value == null ? '' : value).trim().toLowerCase();
+  return s === '1' || s === 'true';
+}
+
+function premiumOf_(values) {
+  return isPremiumValue_(values[11]) ? 1 : 0;
+}
+
+function adminEmails_() {
+  const raw = PropertiesService.getScriptProperties().getProperty('ADMIN_EMAILS') || '';
+  return raw.split(',').map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean);
+}
+
+function isAdmin_(email) {
+  return adminEmails_().indexOf(String(email || '').trim().toLowerCase()) !== -1;
+}
 
 function sheet_() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME) ||
     SpreadsheetApp.getActiveSpreadsheet().insertSheet(SHEET_NAME);
   if (sheet.getLastRow() === 0) sheet.appendRow(HEADERS);
   else sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+  // Backfill premium=0 for rows created before the premium column existed.
+  try {
+    const last = sheet.getLastRow();
+    if (last > 1) {
+      const premiumRange = sheet.getRange(2, 12, last - 1, 1);
+      const vals = premiumRange.getValues();
+      let dirty = false;
+      for (let i = 0; i < vals.length; i++) {
+        if (vals[i][0] === '' || vals[i][0] == null) { vals[i][0] = 0; dirty = true; }
+      }
+      if (dirty) premiumRange.setValues(vals);
+    }
+  } catch (e) {}
   return sheet;
 }
 
@@ -173,8 +215,10 @@ function doPost(e) {
         if (!user || user.values[3] !== String(body.token || '')) return json_({ ok: false, error: 'Log in before using the included AI allowance.' });
         const today=Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Kolkata', 'yyyy-MM-dd');
         const storedDate=String(user.values[10]||'');
-        const used=storedDate===today ? Number(user.values[9]||0) : 0, limit=3;
-        if (used>=limit) return json_({ok:false,error:'Today’s included AI allowance (3 requests) is used. Add your own Gemini or NVIDIA NIM key in Settings, or try again tomorrow.'});
+        const premium = premiumOf_(user.values);
+        const limit = premium === 1 ? PREMIUM_AI_LIMIT : FREE_AI_LIMIT;
+        const used=storedDate===today ? Number(user.values[9]||0) : 0;
+        if (used>=limit) return json_({ok:false,error: premium === 1 ? 'Today’s premium AI allowance (15 requests) is used. Add your own Gemini or NVIDIA NIM key in Settings, or try again tomorrow.' : 'Today’s free AI allowance (3 requests) is used. Upgrade to premium for 15/day, or add your own Gemini or NVIDIA NIM key in Settings, or try again tomorrow.', premium: premium, used: used, remaining: 0, limit: limit});
         const apiKey=PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
         if(!apiKey) return json_({ok:false,error:'The included AI service is not configured yet.'});
         const model=String(body.model||'gemini-3.7-flash');
@@ -183,15 +227,15 @@ function doPost(e) {
         contents.push({role:'user',parts:[{text:'You are a careful CSIR-NET Physics tutor. Use valid LaTeX.\nContext:\n'+String(body.context||'')+'\n\nStudent request:\n'+String(body.prompt||'')}]});
         const response=UrlFetchApp.fetch(endpoint,{method:'post',contentType:'application/json',payload:JSON.stringify({contents:contents,generationConfig:{temperature:0.2,maxOutputTokens:Number(body.maxOutputTokens||4096)} }),muteHttpExceptions:true});
         const result=JSON.parse(response.getContentText()||'{}');
-        if(response.getResponseCode()>=300) return json_({ok:false,error:result.error&&result.error.message||'Included AI request failed.'});
+        if(response.getResponseCode()>=300) return json_({ok:false,error:result.error&&result.error.message||'Included AI request failed.', premium: premium, used: used, remaining: limit-used, limit: limit});
         sheet.getRange(user.row,10,1,2).setValues([[used+1,today]]);
-        return json_({ok:true,text:(((result.candidates||[])[0]||{}).content||{}).parts?.map(function(p){return p.text||'';}).join('')||'No response returned.',used:used+1,remaining:limit-used-1});
+        return json_({ok:true,text:(((result.candidates||[])[0]||{}).content||{}).parts?.map(function(p){return p.text||'';}).join('')||'No response returned.',used:used+1,remaining:limit-used-1,limit:limit,premium:premium});
       }
       if (body.action === 'register') {
         if (user) return json_({ ok: false, error: 'That username is already in use. Please choose another username.' });
         const token = token_();
         const row = sheet.getLastRow() + 1;
-        sheet.getRange(row, 1, 1, HEADERS.length).setValues([[username, hash_(password), '', '', new Date().toISOString(), false, token, '', '', 0, '']]);
+        sheet.getRange(row, 1, 1, HEADERS.length).setValues([[username, hash_(password), '', '', new Date().toISOString(), false, token, '', '', 0, '', 0]]);
         try {
           email_(username, token);
         } catch (mailError) {
@@ -206,7 +250,7 @@ function doPost(e) {
         if (String(user.values[5]).toLowerCase() !== 'true') return json_({ ok: false, error: 'Please verify your account through the email we sent before logging in.' });
         const token = token_();
         sheet.getRange(user.row, 4, 1, 2).setValues([[token, new Date().toISOString()]]);
-        return json_({ ok: true, token: token, backup: user.values[2] || '' });
+        return json_({ ok: true, token: token, backup: user.values[2] || '', updatedAt: user.values[4] || '', premium: premiumOf_(user.values) });
       }
       if (body.action === 'resend') {
         if (!user) return json_({ ok: false, error: 'No account was found for this email. Try creating an account first.' });
@@ -219,13 +263,35 @@ function doPost(e) {
       }
       if (body.action === 'save') {
         if (!user || user.values[3] !== String(body.token || '')) return json_({ ok: false, error: 'Session expired. Log in again.' });
+        // Conflict detection: the client sends the server updatedAt it based its
+        // edits on (baseUpdatedAt). If the cloud copy moved on since, refuse to
+        // silently overwrite and let the client ask the user which side wins.
+        // Old clients that send no baseUpdatedAt keep the previous last-write-wins behavior.
+        const storedAt = String(user.values[4] || '');
+        const storedBackup = String(user.values[2] || '');
+        const baseAt = body.baseUpdatedAt == null ? null : String(body.baseUpdatedAt || '');
+        if (!body.force && baseAt !== null && storedBackup && storedAt && baseAt !== storedAt) {
+          return json_({ ok: false, conflict: true, serverUpdatedAt: storedAt, premium: premiumOf_(user.values), error: 'Cloud backup is newer (saved ' + storedAt + '). Reload it or overwrite it explicitly.' });
+        }
+        const stamp = new Date().toISOString();
         sheet.getRange(user.row, 3, 1, 2).setValues([ [String(body.backup || ''), user.values[3]] ]);
-        sheet.getRange(user.row, 5).setValue(new Date().toISOString());
-        return json_({ ok: true });
+        sheet.getRange(user.row, 5).setValue(stamp);
+        return json_({ ok: true, updatedAt: stamp, premium: premiumOf_(user.values) });
+      }
+      if (body.action === 'setpremium') {
+        // Grant/revoke premium without touching the Sheet by hand.
+        // Caller must be a signed-in admin (ADMIN_EMAILS script property).
+        if (!user || user.values[3] !== String(body.token || '')) return json_({ ok: false, error: 'Session expired. Log in again.' });
+        if (!isAdmin_(username)) return json_({ ok: false, error: 'Not an admin account. Ask the deployment owner to add your email to the ADMIN_EMAILS script property.' });
+        const target = findUser_(sheet, String(body.target || ''));
+        if (!target) return json_({ ok: false, error: 'No account was found for ' + String(body.target || '') + '.' });
+        const value = (String(body.value) === '1' || body.value === 1 || body.value === true) ? 1 : 0;
+        sheet.getRange(target.row, 12).setValue(value);
+        return json_({ ok: true, target: String(target.values[0] || ''), premium: value });
       }
       if (body.action === 'load') {
         if (!user || user.values[3] !== String(body.token || '')) return json_({ ok: false, error: 'Session expired. Log in again.' });
-        return json_({ ok: true, backup: user.values[2] || '', updatedAt: user.values[4] || '' });
+        return json_({ ok: true, backup: user.values[2] || '', updatedAt: user.values[4] || '', premium: premiumOf_(user.values) });
       }
       return json_({ ok: false, error: 'Unknown action.' });
     } finally { lock.releaseLock(); }
